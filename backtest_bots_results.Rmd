@@ -1,0 +1,208 @@
+---
+title: "Crypto tests"
+author: "Henrique"
+date: "18/03/2021"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+options(knitr.kable.NA = '-')
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+
+setwd("C:/Users/hanat/OneDrive/r-projects/Cryptos")
+
+#turn off scientific notation numbers format
+options(scipen=999)
+
+library(tidyverse)
+library(readr)
+library(lubridate)
+library(tidyquant)
+library(readxl)
+library(GGally)
+library(kableExtra)
+							
+
+
+rm(list = ls())
+
+source("bot tests.R")
+
+```
+
+Here is my small retribution for the channel. I´ve been working on backtesting different bot configurations to use on 3commas. I tried with the scripts shared in Tradingview, but I wasn´t happy with the result and some limitations, so I wrote my own in R.
+
+What I will present here is the compared results of the test of 162 different configurations for ADA, LINK, ETH, BTT and BTC, for the whole period of October 2020 to April 2021.
+
+The starting strategy is one of the presented by TradeAlts in his videos (https://youtu.be/oil8FpMWs1E) and it uses the following parameters:
+
+- Target Profit (TP): 1%
+- Base Order (BO): 10.0 USD
+- Safety Order (SO): 15.0 USD
+- Price deviation to open safety orders (SOS): 2%
+- Max safety trades count (MaxSO): 30
+- Safety order volume scale (OS): 1.05
+- Safety order step scale (SS) 1.0
+
+This configuration have a max value per bot of 1006 USD and cover a maximum of 60% of price reduction. Based on that and since I want to compare similar strategies, the following requirements were used for all setups tested:
+
+- Maximum value per bot: 1500
+- *Conservative* setups need to cover between 50% and 60% of price reduction
+- *Moderate* setups need to cover between 30% and 40% of price reduction
+- *Aggressive* setups need to cover less than 20% of price reduction
+- All setups will use BO of 10 USD and SO of 15 or 20 USD (cause this is one of the things I want to test!) 
+
+*HOW IT WORKS*
+
+I believe it´s important to describe the reasoning behind the script, cause it´s not easy to read and understand the code even if for me, who wrote it. It is also boring as hell, so if you don´t care, just go to the next section, no hard feelings!
+
+- All simulations run with no stop.
+- All deals start with a BO buying on close price and generating the setup table with all SO values and steps (the same table 3commas show when you create the bot)
+- Every minute after that it checks if the high price is higher than the sell price in the table. If yes you have a sell, if no, it test the low value.
+- If the low is lower than the SO prices, it buys the required quantity of SO (it will buy as many as required by the low price that minute)
+- every minute it check again until you have a sell price. Them it starts a new deal buying at close price.
+- The profit percentage was calculated based on the total value secured for the bot, not in the total value spent in that deal.
+
+As you can see, it is a simplified model, wrong as any model should be.
+
+*RESULTS*
+
+The data from the simulations shows some expected tendencies which (at least for me) enhance confidence in the results. e.g.: 
+- _Setups with more safe orders closed more deals and more frequently. However, they require a larger amount of money allocated to run and it results in small profits, proportionally._
+- _The most profitable setups changed depending on the coins and periods. However, some setups shows positive results for all coins_
+
+There is a lot to evaluate. Have a look in the aggregated results and share your thoughts! But remember:
+
+*IT IS A SIMULATION ONLY. IT USES A MINUTE TIMEFRAME, AND THE RESULTS ARE NOT THE SAME AS IN REAL TIME.*
+
+*Remember, also, that you should never assume that what happened in the past will repeat in the future!!*
+
+The result table shows:
+- the setup tested (the acronyms are all above)
+- the total of deals closed
+- the average and the maximum duration of the deals, in minutes
+- the total of days with deals closed (from a total of 211 days in the simulation)
+- maximum of safe orders used in one deal
+- total allocated for the bot (that one calculated by 3 commas to never miss a SO)
+- final profit (USD) and profit percentage (final profit/total allocated)
+- Notes on the most profitable setups and the setups I (personally) want to test as more balanced.
+
+*TEST ANY CONFIGURATION ON PAPERTRADING ACCOUNT BEFORE IF YOU WANT TO DO YOUR OWN TESTS!*
+
+```{r results='asis'}
+
+all_deals <- read_csv("C:/Users/hanat/OneDrive/r-projects/Cryptos/simulations/2017-10-all_deals_BTC.csv")
+all_totals <- read_csv("C:/Users/hanat/OneDrive/r-projects/Cryptos/simulations/2017-10-all_totals_BTC.csv")
+all_coins <- read_excel("C:/Users/hanat/OneDrive/r-projects/Cryptos/simulations/Compare_Setups_All Coins.xlsx")
+
+  table_results <- all_coins %>% 
+    select(-c(bot_id, bot, start_date, end_date)) %>% 
+    arrange(pair, desc(profit_percent)) %>% 
+    mutate(profit_percent = profit_percent*100)
+  
+  names(table_results)[17] <- "notes"
+  table_results$notes[which(table_results$notes == "a")] <- "Balanced configuration"
+
+kable(table_results, caption = "Table 1: xxxxxxxxxx") %>% kable_styling("striped", full_width = F) %>% row_spec(0)
+
+```
+
+```{r results='asis'}
+# 
+# top_10_setup <- all_totals %>%
+#   arrange(desc(final_profit)) %>% 
+#   select(bot_id,bot, final_profit) %>% 
+#   filter(final_profit >= final_profit[10])
+# 
+# all_cash_per_day <- all_deals %>% 
+#   group_by(bot, close_date) %>% 
+#   summarise(tot_profit = sum(final_profit, na.rm = T)) %>% 
+#   arrange(desc(close_date)) %>% 
+#   pivot_wider(names_from = close_date, values_from = tot_profit) %>% 
+#   left_join(all_totals[,c('bot', 'final_profit', 'profit_percent')]) %>% 
+#   arrange(desc(profit_percent))
+# 
+# all_cash_per_month <- all_deals %>% 
+#   mutate(year = year(close_date), month = month(close_date)) %>% 
+#   arrange(close_date) %>% 
+#   group_by(bot, year, month) %>% 
+#   summarise(tot_profit = sum(final_profit, na.rm = T)) %>% 
+#   pivot_wider(names_from = month, values_from = tot_profit) %>% 
+#   left_join(all_totals[,c('bot', 'final_profit', 'profit_percent')]) %>% 
+#   arrange(desc(profit_percent))
+#   
+# test_correlation_pair <- all_deals[c(11,15,16,17)]
+# ggpairs(test_correlation_pair)
+# 
+# #Aggregate the results per pair
+# plot_top_bots <- all_deals %>% 
+#   filter(bot_id %in% top_10_setup$bot_id) %>% 
+#   group_by(bot, close_date) %>% 
+#   summarise(tot_profit = sum(final_profit, na.rm = T))
+# 
+# plot_top_bots$close_date <- as.Date(plot_top_bots$close_date, format = c("%d/%m/%Y"))
+# 
+# plot_top_bots <- plot_top_bots %>% 
+#   ggplot(aes(x=close_date, y=tot_profit, col=bot))+
+#   geom_line(aes(type = bot), size = 1)
+# 
+# plot_top_bots
+# # plot_timeseries <- testedperiod %>% 
+# #   ggplot()+
+# #   geom_candlestick(aes(x=date, open=open, high=high, low=low, close=close))+
+# #   geom_point(data=plot_deals, mapping=aes(x= date ,y=value, group=action, col=action))
+# # 
+# # plot_timeseries
+
+```
+
+
+```{r tests, results='asis'}
+
+# unique(all_deals$bot)
+# 
+# check_delay <- all_deals %>% 
+#   filter(bot_id == 2) %>% 
+#   mutate(month = month(close_date), duration_d = time_spent_m/3600) %>% 
+#   ggplot(aes(x=duration_d))+
+#   geom_histogram()
+# 
+# check_delay
+# 
+# #See best configs 
+# backtest_result <- select(all_deals, deal_id
+#                             ,deal_start_dt
+#                             , deal_close_dt
+#                             , bot_id
+#                             , pair
+#                             , duration = time_spent_m
+#                             , used_safety_orders = so_used
+#                             , final_profit
+#                             , close_date
+#   ) %>% 
+#   # filter(close_date < "2021-04-06") %>% 
+#     group_by(bot_id
+#              , pair) %>%
+#     summarise(start_date = min(deal_start_dt)
+#               ,end_date = max(deal_close_dt)
+#               ,tot_deals = n()
+#               ,avg_duration_h = mean(duration, na.rm = T)/60
+#               ,max_duration_h = max(duration, na.rm = T)/60
+#               ,tot_days_deals = n_distinct(close_date, na.rm = T)
+#               ,max_safe_orders = max(used_safety_orders)
+#               ,final_profit = sum(final_profit, na.rm = T)
+#               
+#     ) %>% 
+#     arrange(start_date, desc(tot_deals))
+# 
+# result_bot <- unique(all_totals)[c(1,2,4:10,18,19)] %>% 
+#  inner_join(backtest_result)
+# 
+# length(unique(all_deals$close_date))
+
+```
+
+

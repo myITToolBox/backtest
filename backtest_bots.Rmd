@@ -1,0 +1,402 @@
+---
+title: "Crypto tests"
+author: "Henrique"
+date: "18/03/2021"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+options(knitr.kable.NA = '-')
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+
+setwd("C:/Users/hanat/OneDrive/r-projects/Cryptos")
+
+#turn off scientific notation numbers format
+options(scipen=999)
+
+library(tidyverse)
+library(readr)
+library(lubridate)
+library(tidyquant)
+library(readxl)
+library(GGally)
+							
+
+
+rm(list = ls())
+
+source("bot tests.R")
+
+```
+
+This document is to generate the datasets for analisys
+
+```{r multiple-config-table, results='asis'}
+
+#Import bot parameters for validation or serial comparison
+backtest_totals <- read_excel("C:/Users/hanat/OneDrive/r-projects/Cryptos/backtest_multiple.xlsx", 
+    col_types = c("numeric", "text", "text", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "text", "text", "text", 
+        "numeric", "numeric", "numeric", "numeric", 
+        "numeric", "numeric"))
+
+# pander::pander(backtest_totals)
+```
+
+
+```{r multiple-config-link, results='asis'}
+
+#filter the bot I want to test
+# backtest_totals <- backtest_totals[1:2,]
+
+backtest_totals$pair <- "USDT-LINK"
+
+# #start parameters
+fee_percent <<- 0.1
+coin_digits <<- 3 #cause this is need to calculate some indivisible coin prices
+deal_start_condition <<- "ASAP"
+
+
+#get the timeseries
+timeseries <- read_csv("price_list/Binance_LINKUSDT_minute.csv") %>% select(-c(unix))
+tz(timeseries$date) <- "EST"
+
+all_totals_link <- NULL
+all_deals_link <- NULL
+
+for (n in 1:dim(backtest_totals)[1]) {
+  print(n)
+  #filter the bot I want to test
+bot_config <- backtest_totals[n,]
+  
+  backtesting <- compare_bot(bot_config, timeseries, coin_digits=2, fee_percent=0.075, deal_start_condition="ASAP")
+
+  result_bot <- bot_config[c(1,2,4:10)] %>% 
+ inner_join(backtesting$backtest_result) %>% 
+    mutate(required_investment = sum(SO*(OS^(0:(MaxSO-1))))+BO
+           ,profit_percent = final_profit/required_investment )
+  
+  all_totals_link <- rbind(all_totals_link, result_bot)
+  
+  deals_bot <- bot_config[c(1,2)] %>% 
+    inner_join(backtesting$deals_data)
+  
+  all_deals_link <- rbind(all_deals_link, deals_bot)
+  
+}
+
+# view(all_totals_link[c(3:9,13:19)])
+
+  all_deals_link <- all_deals_link %>% 
+    left_join(all_totals_link[c(1,18)])
+  
+filename <- paste(year(all_totals_link$start_date[1]), month(all_totals_link$start_date[1]), sep = "-")
+  write_csv(all_totals_link, paste("simulations/", filename, "-all_totals_link", ".csv", sep = ""))
+  write_csv(all_deals_link, paste("simulations/", filename, "-all_deals_link", ".csv", sep = ""))
+
+
+  
+```
+
+```{r multiple-config-BTT, results='asis'}
+
+#filter the bot I want to test
+# backtest_totals <- backtest_totals[1:2,]
+
+backtest_totals$pair <- "USDT-BTT"
+
+# #start parameters
+fee_percent <<- 0.1
+coin_digits <<- 3 #cause this is need to calculate some indivisible coin prices
+deal_start_condition <<- "ASAP"
+
+
+#get the timeseries
+timeseries <- read_csv("price_list/Binance_BTTUSDT_minute.csv") %>% select(-c(unix))
+tz(timeseries$date) <- "EST"
+
+all_totals_BTT <- NULL
+all_deals_BTT <- NULL
+
+for (n in 1:dim(backtest_totals)[1]) {
+  print(n)
+  #filter the bot I want to test
+bot_config <- backtest_totals[n,]
+  
+  backtesting <- compare_bot(bot_config, timeseries, coin_digits=2, fee_percent=0.075, deal_start_condition="ASAP")
+
+  result_bot <- bot_config[c(1,2,4:10)] %>% 
+ inner_join(backtesting$backtest_result) %>% 
+    mutate(required_investment = sum(SO*(OS^(0:(MaxSO-1))))+BO
+           ,profit_percent = final_profit/required_investment )
+  
+  all_totals_BTT <- rbind(all_totals_BTT, result_bot)
+  
+  deals_bot <- bot_config[c(1,2)] %>% 
+    inner_join(backtesting$deals_data)
+  
+  all_deals_BTT <- rbind(all_deals_BTT, deals_bot)
+  
+}
+
+# view(all_totals_BTT[c(3:9,13:19)])
+
+  all_deals_BTT <- all_deals_BTT %>% 
+    left_join(all_totals_BTT[c(1,18)])
+  
+filename <- paste(year(all_totals_BTT$start_date[1]), month(all_totals_BTT$start_date[1]), sep = "-")
+  write_csv(all_totals_BTT, paste("simulations/", filename, "-all_totals_BTT", ".csv", sep = ""))
+  write_csv(all_deals_BTT, paste("simulations/", filename, "-all_deals_BTT", ".csv", sep = ""))
+  
+```
+
+```{r multiple-config-ADA, results='asis'}
+
+#filter the bot I want to test
+# backtest_totals <- backtest_totals[1:2,]
+
+backtest_totals$pair <- "USDT-ADA"
+
+# #start parameters
+fee_percent <<- 0.1
+coin_digits <<- 3 #cause this is need to calculate some indivisible coin prices
+deal_start_condition <<- "ASAP"
+
+
+#get the timeseries
+timeseries <- read_csv("price_list/Binance_ADAUSDT_minute.csv") %>% select(-c(unix))
+tz(timeseries$date) <- "EST"
+
+all_totals_ADA <- NULL
+all_deals_ADA <- NULL
+
+for (n in 1:dim(backtest_totals)[1]) {
+  print(n)
+  #filter the bot I want to test
+bot_config <- backtest_totals[n,]
+  
+  backtesting <- compare_bot(bot_config, timeseries, coin_digits=2, fee_percent=0.075, deal_start_condition="ASAP")
+
+  result_bot <- bot_config[c(1,2,4:10)] %>% 
+ inner_join(backtesting$backtest_result) %>% 
+    mutate(required_investment = sum(SO*(OS^(0:(MaxSO-1))))+BO
+           ,profit_percent = final_profit/required_investment )
+  
+  all_totals_ADA <- rbind(all_totals_ADA, result_bot)
+  
+  deals_bot <- bot_config[c(1,2)] %>% 
+    inner_join(backtesting$deals_data)
+  
+  all_deals_ADA <- rbind(all_deals_ADA, deals_bot)
+  
+}
+
+# view(all_totals_ADA[c(3:9,13:19)])
+
+  all_deals_ADA <- all_deals_ADA %>% 
+    left_join(all_totals_ADA[c(1,18)])
+  
+filename <- paste(year(all_totals_ADA$start_date[1]), month(all_totals_ADA$start_date[1]), sep = "-")
+  write_csv(all_totals_ADA, paste("simulations/", filename, "-all_totals_ADA", ".csv", sep = ""))
+  write_csv(all_deals_ADA, paste("simulations/", filename, "-all_deals_ADA", ".csv", sep = ""))
+  
+```
+
+```{r multiple-config-ETH, results='asis'}
+
+#filter the bot I want to test
+# backtest_totals <- backtest_totals[1:2,]
+
+backtest_totals$pair <- "USDT-ETH"
+
+# #start parameters
+fee_percent <<- 0.1
+coin_digits <<- 3 #cause this is need to calculate some indivisible coin prices
+deal_start_condition <<- "ASAP"
+
+
+#get the timeseries
+timeseries <- read_csv("price_list/Binance_ETHUSDT_minute.csv") %>% select(-c(unix))
+tz(timeseries$date) <- "EST"
+
+all_totals_ETH <- NULL
+all_deals_ETH <- NULL
+
+for (n in 1:dim(backtest_totals)[1]) {
+  print(n)
+  #filter the bot I want to test
+bot_config <- backtest_totals[n,]
+  
+  backtesting <- compare_bot(bot_config, timeseries, coin_digits=2, fee_percent=0.075, deal_start_condition="ASAP")
+
+  result_bot <- bot_config[c(1,2,4:10)] %>% 
+ inner_join(backtesting$backtest_result) %>% 
+    mutate(required_investment = sum(SO*(OS^(0:(MaxSO-1))))+BO
+           ,profit_percent = final_profit/required_investment )
+  
+  all_totals_ETH <- rbind(all_totals_ETH, result_bot)
+  
+  deals_bot <- bot_config[c(1,2)] %>% 
+    inner_join(backtesting$deals_data)
+  
+  all_deals_ETH <- rbind(all_deals_ETH, deals_bot)
+  
+}
+
+# view(all_totals_ETH[c(3:9,13:19)])
+
+  all_deals_ETH <- all_deals_ETH %>% 
+    left_join(all_totals_ETH[c(1,18)])
+  
+filename <- paste(year(all_totals_ETH$start_date[1]), month(all_totals_ETH$start_date[1]), sep = "-")
+  write_csv(all_totals_ETH, paste("simulations/", filename, "-all_totals_ETH", ".csv", sep = ""))
+  write_csv(all_deals_ETH, paste("simulations/", filename, "-all_deals_ETH", ".csv", sep = ""))
+  
+```
+
+```{r multiple-config-BTC, results='asis'}
+
+#filter the bot I want to test
+# backtest_totals <- backtest_totals[1:2,]
+
+backtest_totals$pair <- "USDT-BTC"
+
+# #start parameters
+fee_percent <<- 0.1
+coin_digits <<- 3 #cause this is need to calculate some indivisible coin prices
+deal_start_condition <<- "ASAP"
+
+
+#get the timeseries
+# timeseries <- read_csv("price_list/Binance_BTCUSDT_minute.csv") %>% select(-c(unix))
+# tz(timeseries$date) <- "EST"
+
+timeseries <- read_delim("C:/Users/hanat/OneDrive/r-projects/Cryptos/price_list/BTCUSDT.csv"
+                         , "|"
+                         , escape_double = FALSE, col_names = c("date", "open", "high", "low", "close", "Volume_Coin", "delete 1", "delete 2", "Volume_USDX", "tradecount")
+                         , trim_ws = TRUE) %>% 
+  mutate(date = as.POSIXct(date, origin = "1970-01-01", tz = "EST"), symbol = "BTC-USDT") %>% 
+  select(date, symbol, open, high, low, close, Volume_Coin, Volume_USDX, tradecount)
+
+all_totals_BTC <- NULL
+all_deals_BTC <- NULL
+
+for (n in 1:dim(backtest_totals)[1]) {
+  print(n)
+  #filter the bot I want to test
+bot_config <- backtest_totals[n,]
+  
+  backtesting <- compare_bot(bot_config, timeseries, coin_digits=2, fee_percent=0.075, deal_start_condition="ASAP")
+
+  result_bot <- bot_config[c(1,2,4:10)] %>% 
+ inner_join(backtesting$backtest_result) %>% 
+    mutate(required_investment = sum(SO*(OS^(0:(MaxSO-1))))+BO
+           ,profit_percent = final_profit/required_investment )
+  
+  all_totals_BTC <- rbind(all_totals_BTC, result_bot)
+  
+  deals_bot <- bot_config[c(1,2)] %>% 
+    inner_join(backtesting$deals_data)
+  
+  all_deals_BTC <- rbind(all_deals_BTC, deals_bot)
+  
+}
+
+# view(all_totals_BTC[c(3:9,13:19)])
+
+  all_deals_BTC <- all_deals_BTC %>% 
+    left_join(all_totals_BTC[c(1,18)])
+  
+filename <- paste(year(all_totals_BTC$start_date[1]), month(all_totals_BTC$start_date[1]), sep = "-")
+  write_csv(all_totals_BTC, paste("simulations/", filename, "-all_totals_BTC", ".csv", sep = ""))
+  write_csv(all_deals_BTC, paste("simulations/", filename, "-all_deals_BTC", ".csv", sep = ""))
+  
+```
+
+```{r bnb, results='asis'}
+# #Import bot parameters for validation or serial comparison
+# backtest_totals <- read_csv("C:/Users/hanat/OneDrive/r-projects/Cryptos/backtest_totals.csv")
+# 
+# #filter the bot I want to test
+# bot_config <- backtest_totals[1,]
+# 
+# # #start parameters
+# fee_percent <<- 0.075
+# coin_digits <<- 1 #cause this is need to calculate some indivisible coin prices
+# deal_start_condition <<- "ASAP"
+# 
+# 
+# #get the timeseries
+# timeseries <- read_csv("price_list/Binance_BNBUSDT_minute.csv") %>% select(-c(unix))
+# tz(timeseries$date) <- "EST"
+# 
+# backtesting <- compare_bot(bot_config, timeseries, coin_digits=2, fee_percent=0.075, deal_start_condition="ASAP")
+# 
+# bnb <- bot_config[c(1,2,4:10)] %>% 
+#  inner_join(backtesting$validation)
+# bnb$pair[2] <- paste(bnb$pair[1], "backtest")
+# bnb$pair[1] <- paste(bnb$pair[1], "real")
+
+```
+
+```{r link, results='asis'}
+# #Import bot parameters for validation or serial comparison
+# backtest_totals <- read_csv("C:/Users/hanat/OneDrive/r-projects/Cryptos/backtest_totals.csv")
+# 
+# #filter the bot I want to test
+# bot_config <- backtest_totals[2,]
+# 
+# # #start parameters
+# fee_percent <<- 0.075
+# coin_digits <<- 1 #cause this is need to calculate some indivisible coin prices
+# deal_start_condition <<- "ASAP"
+# 
+# 
+# #get the timeseries
+# timeseries <- read_csv("price_list/Binance_LINKUSDT_minute.csv") %>% select(-c(unix))
+# tz(timeseries$date) <- "EST"
+# 
+# backtesting <- compare_bot(bot_config, timeseries, coin_digits=2, fee_percent=0.075, deal_start_condition="ASAP")
+# 
+# link <- bot_config[c(1,2,4:10)] %>% 
+#  inner_join(backtesting$validation)
+# link$pair[2] <- paste(link$pair[1], "backtest")
+# link$pair[1] <- paste(link$pair[1], "real")
+# 
+
+```
+
+
+```{r ADA, results='asis'}
+
+# #Import bot parameters for validation or serial comparison
+# backtest_totals <- read_csv("C:/Users/hanat/OneDrive/r-projects/Cryptos/backtest_totals.csv")
+# 
+# #filter the bot I want to test
+# bot_config <- backtest_totals[3,]
+# 
+# # #start parameters
+# fee_percent <<- 0.000
+# coin_digits <<- 1 #cause this is need to calculate some indivisible coin prices
+# deal_start_condition <<- "ASAP"
+# 
+# 
+# #get the timeseries
+# timeseries <- read_csv("price_list/Binance_ADAUSDT_minute.csv") %>% select(-c(unix))
+# tz(timeseries$date) <- "EST"
+# 
+# backtesting <- compare_bot(bot_config, timeseries, coin_digits=2, fee_percent=0.075, deal_start_condition="ASAP")
+# 
+# ada <- bot_config[c(1,2,4:10)] %>% 
+#  inner_join(backtesting$validation)
+# ada$pair[2] <- paste(ada$pair[1], "backtest")
+# ada$pair[1] <- paste(ada$pair[1], "real")
+
+```
+
+
+
