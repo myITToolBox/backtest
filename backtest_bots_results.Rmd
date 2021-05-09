@@ -6,13 +6,14 @@ output:
   html_document:
     df_print: paged
   pdf_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
 options(knitr.kable.NA = '-')
 knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 
-setwd("C:/Users/hanat/OneDrive/r-projects/Cryptos")
+# setwd("C:/Users/hanat/OneDrive/r-projects/backtest")
 
 #turn off scientific notation numbers format
 options(scipen=999)
@@ -24,8 +25,6 @@ library(tidyquant)
 library(readxl)
 library(GGally)
 library(kableExtra)
-							
-
 
 rm(list = ls())
 
@@ -33,9 +32,9 @@ source("bot tests.R")
 
 ```
 
-Here is my small retribution for the channel. I´ve been working on backtesting different bot configurations to use on 3commas. I tried with the scripts shared in Tradingview, but I wasn´t happy with the result and some limitations, so I wrote my own in R.
+Here is my small contribution. I´ve been working on backtesting different bot configurations to use on 3commas. I tried with the Tradingview scripts shared, but I was not confident with the results, so I decided to try to create my on backtest in R.
 
-What I will present here is the compared results of the test of 162 different configurations for ADA, LINK, ETH, BTT and BTC, for the whole period of October 2020 to April 2021.
+What I´m sharing is the compared results of 162 different configurations for ADA, LINK, ETH, BTT and BTC, for the whole period of October 2020 to April 2021.
 
 The starting strategy is one of the presented by TradeAlts in his videos (https://youtu.be/oil8FpMWs1E) and it uses the following parameters:
 
@@ -45,34 +44,35 @@ The starting strategy is one of the presented by TradeAlts in his videos (https:
 - Price deviation to open safety orders (SOS): 2%
 - Max safety trades count (MaxSO): 30
 - Safety order volume scale (OS): 1.05
-- Safety order step scale (SS) 1.0
+- Safety order step scale (MSC) 1.0
 
-This configuration have a max value per bot of 1006 USD and cover a maximum of 60% of price reduction. Based on that and since I want to compare similar strategies, the following requirements were used for all setups tested:
+This configuration have a max value per bot of 1006 USD and cover a maximum of 60% of price deviation. Based on that and since I want to compare similar strategies, the following requirements were used for all setups tested:
 
 - Maximum value per bot: 1500
-- *Conservative* setups need to cover between 50% and 60% of price reduction
-- *Moderate* setups need to cover between 30% and 40% of price reduction
-- *Aggressive* setups need to cover less than 20% of price reduction
+- **Conservative** setups need to cover between 50% and 60% of price reduction
+- **Moderate** setups need to cover between 30% and 40% of price reduction
+- **Aggressive** setups need to cover less than 20% of price reduction
 - All setups will use BO of 10 USD and SO of 15 or 20 USD (cause this is one of the things I want to test!) 
 
-*HOW IT WORKS*
+**HOW IT WORKS**
 
-I believe it´s important to describe the reasoning behind the script, cause it´s not easy to read and understand the code even if for me, who wrote it. It is also boring as hell, so if you don´t care, just go to the next section, no hard feelings!
+I believe it´s important to describe the reasoning behind the script, cause it´s not easy to read and understand the code even if for me, who wrote it. It is also boring, so if you don´t care, just go to the next section.
 
 - All simulations run with no stop.
-- All deals start with a BO buying on close price and generating the setup table with all SO values and steps (the same table 3commas show when you create the bot)
-- Every minute after that it checks if the high price is higher than the sell price in the table. If yes you have a sell, if no, it test the low value.
-- If the low is lower than the SO prices, it buys the required quantity of SO (it will buy as many as required by the low price that minute)
+- All deals start with a BO buying on close price and generating the setup table with all Safety Orders values and steps (the same table 3commas show when you create the bot)
+- Every minute after that it checks if the high price is higher than the sell price in the table. If yes you have a sell, if no, it will test the low value.
+- If the low value is lower than the SO prices, it buys the required quantity of SO (it will buy as many as required by the low price that minute)
 - every minute it check again until you have a sell price. Them it starts a new deal buying at close price.
-- The profit percentage was calculated based on the total value secured for the bot, not in the total value spent in that deal.
+- The profit percentage was calculated based on the total value required for the bot, not in the total value spent in that deal.
 
 As you can see, it is a simplified model, wrong as any model should be.
 
-*RESULTS*
+**RESULTS**
 
-The data from the simulations shows some expected tendencies which (at least for me) enhance confidence in the results. e.g.: 
-- _Setups with more safe orders closed more deals and more frequently. However, they require a larger amount of money allocated to run and it results in small profits, proportionally._
-- _The most profitable setups changed depending on the coins and periods. However, some setups shows positive results for all coins_
+The data from the simulations shows some expected tendencies which (at least for me) enhance confidence in the results. e.g.:
+
+- Setups with more safe orders closed more deals and more frequently. However, they require a larger amount of money allocated to run and it results in smaller profits, proportionally.
+- The most profitable setups changed depending on the coins and periods. However, some setups shows positive results for all coins.
 
 There is a lot to evaluate. Have a look in the aggregated results and share your thoughts! But remember:
 
@@ -92,47 +92,620 @@ The result table shows:
 
 *TEST ANY CONFIGURATION ON PAPERTRADING ACCOUNT BEFORE IF YOU WANT TO DO YOUR OWN TESTS!*
 
+Also, remember that the results consider that you never reinvested any money in the bots and just cash out all profits. Is you reinvest or are profiting in crypto, your numbers should probably be much better!
+
+*Change the SO between 15 and 20 USD*
+
 ```{r results='asis'}
 
-all_deals <- read_csv("C:/Users/hanat/OneDrive/r-projects/Cryptos/simulations/2017-10-all_deals_BTC.csv")
-all_totals <- read_csv("C:/Users/hanat/OneDrive/r-projects/Cryptos/simulations/2017-10-all_totals_BTC.csv")
-all_coins <- read_excel("C:/Users/hanat/OneDrive/r-projects/Cryptos/simulations/Compare_Setups_All Coins.xlsx")
+all_coins <- read_excel("simulations/Compare_Setups_All Coins.xlsx")
+setups <- read_excel("backtest_multiple - big all coins.xlsx")
 
   table_results <- all_coins %>% 
-    select(-c(bot_id, bot, start_date, end_date)) %>% 
+    left_join(select(setups, bot_id, Strategy)) %>% 
+    select(-c(start_date, end_date)) %>% 
     arrange(pair, desc(profit_percent)) %>% 
     mutate(profit_percent = profit_percent*100)
   
-  names(table_results)[17] <- "notes"
+  names(table_results)[19] <- "notes"
   table_results$notes[which(table_results$notes == "a")] <- "Balanced configuration"
+  table_results$index <- seq(1:dim(table_results)[1])
 
-kable(table_results, caption = "Table 1: xxxxxxxxxx") %>% kable_styling("striped", full_width = F) %>% row_spec(0)
+# kable(table_results, caption = "Table 1: xxxxxxxxxx") %>% kable_styling("striped", full_width = F) %>% row_spec(0)
+
+  kable(table_results[which(table_results$bot_id == 2),c(10,3:9,11:18)], caption = "Table 1: xxxxxxxxxx") %>% kable_styling("striped", full_width = F) %>% row_spec(0)
+  
+```
+
+```{r results='asis'}
+
+#Results regarding change the SO size
+
+SO_change_profit_percent <- 0
+SO_change_profit_tot <- 0
+SO_change_day_deals <- 0
+Tot_comparisons <- 0
+Observations <- NULL
+
+for (i in table_results$index[which(table_results$SO == min(table_results$SO))]) {
+  
+  data_test <- filter(table_results, index == i)
+  compare_set <- filter(table_results
+                        , pair == data_test$pair
+                        , TP == data_test$TP
+                        , SO != data_test$SO
+                        , MaxSO == data_test$MaxSO
+                        , SOS == data_test$SOS
+                        , OS == data_test$OS
+                        , MSC == data_test$MSC)
+  
+  if (dim(compare_set)[1]>0) {
+    
+    Tot_comparisons <- Tot_comparisons +1
+          
+      changes <- tibble(pair = data_test$pair
+                        ,start_SO = data_test$SO
+                        ,compared_SO = compare_set$SO
+                        ,percent_change = (compare_set$profit_percent-data_test$profit_percent)/data_test$profit_percent
+                        ,tot_change = (compare_set$final_profit-data_test$final_profit)/data_test$final_profit
+                        ,daydeal_change = (compare_set$tot_days_deals-data_test$tot_days_deals)/data_test$tot_days_deals
+                        ,budget_change = (compare_set$required_investment-data_test$required_investment)/data_test$required_investment)
+      
+      Observations <- rbind(Observations, changes)
+    
+    if (data_test$profit_percent < compare_set$profit_percent) {
+      
+      SO_change_profit_percent <- SO_change_profit_percent+1
+      
+    }
+    
+    if (data_test$final_profit < compare_set$final_profit) {
+      SO_change_profit_tot <- SO_change_profit_tot+1
+
+    }
+    
+      if (data_test$tot_days_deals < compare_set$tot_days_deals) {
+      SO_change_day_deals <- SO_change_day_deals+1
+    }
+  }
+}
+
+# SO_change_profit_percent/Tot_comparisons #Rate of setups where the profit percent raised due only to raise the SO
+# SO_change_profit_tot/Tot_comparisons #Rate of setups where the profit total raised due only to raise the SO
+# SO_change_day_deals/Tot_comparisons  #Rate of setups where the total of days with deals raised due only to raise the SO
+
+all_coins <- pair_changes <- Observations %>% 
+            group_by(start_SO, compared_SO) %>% 
+            summarise(percent_change = mean(percent_change)
+                      ,tot_change = mean(tot_change)
+                      ,daydeal_change = mean(daydeal_change)
+                      ,budget_change = mean(budget_change)) %>% 
+            add_column(pair = 'All pairs', .before = 'start_SO')
+ 
+pair_changes <- Observations %>% 
+  group_by(pair, start_SO, compared_SO) %>% 
+  summarise(percent_change = mean(percent_change)
+            ,tot_change = mean(tot_change)
+            ,daydeal_change = mean(daydeal_change)
+            ,budget_change = mean(budget_change)) %>% 
+  rbind(all_coins)
+
+names(pair_changes)[4:7] <- c("Profit percent", "Total profit", "Days with deals", "Budget")
+
+#Present the table with results
+kable(pair_changes, caption = "Changes observed per pair") %>% kable_styling("striped", full_width = F) %>% row_spec(0)
+
+#Present some graphics with results
+ggplot(data.frame(change = Observations$tot_change), aes(change))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the total profit due increasing SO size")
+
+ggplot(data.frame(change = Observations$percent_change), aes(change))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the profit percentage due increasing SO size")
+
+ggplot(data.frame(change = Observations$daydeal_change), aes(change))+
+  geom_histogram()+
+  labs(title = "Rate of changes in total of days with deals due increasing SO size")
+
+```
+```{r results='asis'}
+
+#Results regarding change the TP size
+
+TP_change_profit_percent <- 0
+TP_change_profit_tot <- 0
+TP_change_day_deals <- 0
+Tot_comparisons <- 0
+Observations <- NULL
+
+for (i in table_results$index[which(table_results$TP == min(table_results$TP))]) {
+  
+  data_test <- filter(table_results, index == i)
+  compare_set <- filter(table_results
+                        , pair == data_test$pair
+                        , TP != data_test$TP
+                        , SO == data_test$SO
+                        , MaxSO == data_test$MaxSO
+                        , SOS == data_test$SOS
+                        , OS == data_test$OS
+                        , MSC == data_test$MSC)
+  
+  if (dim(compare_set)[1]>0) {
+    
+    Tot_comparisons <- Tot_comparisons +1
+          
+      changes <- tibble(pair = data_test$pair
+                        ,start_TP = data_test$TP
+                        ,compared_TP = compare_set$TP
+                        ,percent_change = (compare_set$profit_percent-data_test$profit_percent)/data_test$profit_percent
+                        ,tot_change = (compare_set$final_profit-data_test$final_profit)/data_test$final_profit
+                        ,daydeal_change = (compare_set$tot_days_deals-data_test$tot_days_deals)/data_test$tot_days_deals
+                        ,budget_change = (compare_set$required_investment-data_test$required_investment)/data_test$required_investment)
+      
+      Observations <- rbind(Observations, changes)
+    
+    if (data_test$profit_percent < compare_set$profit_percent) {
+      
+      TP_change_profit_percent <- TP_change_profit_percent+1
+      
+    }
+    
+    if (data_test$final_profit < compare_set$final_profit) {
+      TP_change_profit_tot <- TP_change_profit_tot+1
+
+    }
+    
+      if (data_test$tot_days_deals < compare_set$tot_days_deals) {
+      TP_change_day_deals <- TP_change_day_deals+1
+    }
+  }
+}
+
+all_coins <- pair_changes <- Observations %>% 
+            group_by(start_TP, compared_TP) %>% 
+            summarise(percent_change = mean(percent_change)
+                      ,tot_change = mean(tot_change)
+                      ,daydeal_change = mean(daydeal_change)
+                      ,budget_change = mean(budget_change)) %>% 
+            add_column(pair = 'All pairs', .before = 'start_TP')
+ 
+pair_changes <- Observations %>% 
+  group_by(pair, start_TP, compared_TP) %>% 
+  summarise(percent_change = mean(percent_change)
+            ,tot_change = mean(tot_change)
+            ,daydeal_change = mean(daydeal_change)
+            ,budget_change = mean(budget_change)) %>% 
+  rbind(all_coins)
+
+names(pair_changes)[4:7] <- c("Profit percent", "Total profit", "Days with deals", "Budget")
+
+#Present the table with results
+kable(pair_changes[,-7], caption = "Changes observed per pair") %>% kable_styling("striped", full_width = F) %>% row_spec(0)
+
+#Present some graphics with results
+Observations %>% 
+  ungroup() %>% 
+  ggplot(aes(tot_change, group = compared_TP, fill = compared_TP))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the total profit due increasing TP size")
+
+Observations %>% 
+  ungroup() %>% 
+  ggplot(aes(daydeal_change, group = compared_TP, fill = compared_TP))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the total of days with closed deals due increasing TP size")
+
+```
+```{r results='asis'}
+
+#Results regarding change the MaxSO size
+
+MaxSO_change_profit_percent <- 0
+MaxSO_change_profit_tot <- 0
+MaxSO_change_day_deals <- 0
+Tot_comparisons <- 0
+Observations <- NULL
+
+#For Max SO I used 15 instead of the minimum, due issues with MSC and smaller numbers
+for (i in table_results$index[which(table_results$MaxSO == 15)]) {
+  
+  data_test <- filter(table_results, index == i)
+  compare_set <- filter(table_results
+                        , pair == data_test$pair
+                        , TP == data_test$TP
+                        , SO == data_test$SO
+                        , MaxSO != data_test$MaxSO
+                        , SOS == data_test$SOS
+                        , OS == data_test$OS
+                        , MSC == data_test$MSC)
+  
+  
+  if (dim(compare_set)[1]>0) {
+    
+    Tot_comparisons <- Tot_comparisons +1
+          
+      changes <- tibble(pair = data_test$pair
+                        ,start_MaxSO = data_test$MaxSO
+                        ,compared_MaxSO = compare_set$MaxSO
+                        ,percent_change = (compare_set$profit_percent-data_test$profit_percent)/data_test$profit_percent
+                        ,tot_change = (compare_set$final_profit-data_test$final_profit)/data_test$final_profit
+                        ,daydeal_change = (compare_set$tot_days_deals-data_test$tot_days_deals)/data_test$tot_days_deals
+                        ,budget_change = (compare_set$required_investment-data_test$required_investment)/data_test$required_investment)
+      
+      Observations <- rbind(Observations, changes)
+    
+    if (data_test$profit_percent < compare_set$profit_percent) {
+      
+      MaxSO_change_profit_percent <- MaxSO_change_profit_percent+1
+      
+    }
+    
+    if (data_test$final_profit < compare_set$final_profit) {
+      MaxSO_change_profit_tot <- MaxSO_change_profit_tot+1
+
+    }
+    
+      if (data_test$tot_days_deals < compare_set$tot_days_deals) {
+      MaxSO_change_day_deals <- MaxSO_change_day_deals+1
+    }
+  }
+}
+
+all_coins <- pair_changes <- Observations %>% 
+            group_by(start_MaxSO, compared_MaxSO) %>% 
+            summarise(percent_change = mean(percent_change)
+                      ,tot_change = mean(tot_change)
+                      ,daydeal_change = mean(daydeal_change)
+                      ,budget_change = mean(budget_change)) %>% 
+            add_column(pair = 'All pairs', .before = 'start_MaxSO')
+ 
+pair_changes <- Observations %>% 
+  group_by(pair, start_MaxSO, compared_MaxSO) %>% 
+  summarise(percent_change = mean(percent_change)
+            ,tot_change = mean(tot_change)
+            ,daydeal_change = mean(daydeal_change)
+            ,budget_change = mean(budget_change)) %>% 
+  rbind(all_coins)
+
+names(pair_changes)[4:7] <- c("Profit percent", "Total profit", "Days with deals", "Budget")
+
+#Present the table with results
+kable(pair_changes, caption = "Changes observed per pair") %>% kable_styling("striped", full_width = F) %>% row_spec(0)
+
+#Present some graphics with results
+Observations %>% 
+  ungroup() %>% 
+  ggplot(aes(tot_change, group = compared_MaxSO, fill = compared_MaxSO))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the total profit due increasing MaxSO size")
+
+Observations %>% 
+  ungroup() %>% 
+  ggplot(aes(percent_change, group = compared_MaxSO, fill = compared_MaxSO))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the proportional profit due increasing MaxSO size")
+
+Observations %>% 
+  ungroup() %>% 
+  ggplot(aes(daydeal_change, group = compared_MaxSO, fill = compared_MaxSO))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the total of days with closed deals due increasing MaxSO size")
+
+```
+```{r results='asis'}
+
+#Results regarding change the SOS size
+
+SOS_change_profit_percent <- 0
+SOS_change_profit_tot <- 0
+SOS_change_day_deals <- 0
+Tot_comparisons <- 0
+Observations <- NULL
+
+#For Max SO I used 15 instead of the minimum, due issues with MSC and smaller numbers
+for (i in table_results$index[which(table_results$SOS == min(table_results$SOS))]) {
+  
+  data_test <- filter(table_results, index == i)
+  compare_set <- filter(table_results
+                        , pair == data_test$pair
+                        , TP == data_test$TP
+                        , SO == data_test$SO
+                        # , MaxSO == data_test$MaxSO
+                        , SOS != data_test$SOS
+                        , OS == data_test$OS
+                        , Strategy == data_test$Strategy)
+  
+  
+  if (dim(compare_set)[1]>0) {
+    
+    Tot_comparisons <- Tot_comparisons +1
+          
+      changes <- tibble(pair = data_test$pair
+                        ,start_SOS = data_test$SOS
+                        ,compared_SOS = compare_set$SOS
+                        ,percent_change = (compare_set$profit_percent-data_test$profit_percent)/data_test$profit_percent
+                        ,tot_change = (compare_set$final_profit-data_test$final_profit)/data_test$final_profit
+                        ,daydeal_change = (compare_set$tot_days_deals-data_test$tot_days_deals)/data_test$tot_days_deals
+                        ,budget_change = (compare_set$required_investment-data_test$required_investment)/data_test$required_investment)
+      
+      Observations <- rbind(Observations, changes)
+    
+    if (data_test$profit_percent < compare_set$profit_percent) {
+      
+      SOS_change_profit_percent <- SOS_change_profit_percent+1
+      
+    }
+    
+    if (data_test$final_profit < compare_set$final_profit) {
+      SOS_change_profit_tot <- SOS_change_profit_tot+1
+
+    }
+    
+      if (data_test$tot_days_deals < compare_set$tot_days_deals) {
+      SOS_change_day_deals <- SOS_change_day_deals+1
+    }
+  }
+}
+
+all_coins <- pair_changes <- Observations %>% 
+            group_by(start_SOS, compared_SOS) %>% 
+            summarise(percent_change = mean(percent_change)
+                      ,tot_change = mean(tot_change)
+                      ,daydeal_change = mean(daydeal_change)
+                      ,budget_change = mean(budget_change)) %>% 
+            add_column(pair = 'All pairs', .before = 'start_SOS')
+ 
+pair_changes <- Observations %>% 
+  group_by(pair, start_SOS, compared_SOS) %>% 
+  summarise(percent_change = mean(percent_change)
+            ,tot_change = mean(tot_change)
+            ,daydeal_change = mean(daydeal_change)
+            ,budget_change = mean(budget_change)) %>% 
+  rbind(all_coins)
+
+names(pair_changes)[4:7] <- c("Profit percent", "Total profit", "Days with deals", "Budget")
+
+#Present the table with results
+kable(pair_changes, caption = "Changes observed per pair") %>% kable_styling("striped", full_width = F) %>% row_spec(0)
+
+#Present some graphics with results
+Observations %>% 
+  ungroup() %>% 
+  ggplot(aes(tot_change, group = compared_SOS, fill = compared_SOS))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the total profit due increasing SOS size")
+
+Observations %>% 
+  ungroup() %>% 
+  ggplot(aes(percent_change, group = compared_SOS, fill = compared_SOS))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the profit percentual due increasing SOS size")
+
+Observations %>% 
+  ungroup() %>% 
+  ggplot(aes(daydeal_change, group = compared_SOS, fill = compared_SOS))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the total of days with closed deals due increasing SOS size")
+
+```
+```{r results='asis'}
+
+#Results regarding change the OS size
+
+OS_change_profit_percent <- 0
+OS_change_profit_tot <- 0
+OS_change_day_deals <- 0
+Tot_comparisons <- 0
+Observations <- NULL
+
+#For Max SO I used 15 instead of the minimum, due issues with MSC and smaller numbers
+for (i in table_results$index[which(table_results$OS == min(table_results$OS))]) {
+  
+  data_test <- filter(table_results, index == i)
+  compare_set <- filter(table_results
+                        , pair == data_test$pair
+                        , TP == data_test$TP
+                        , SO == data_test$SO
+                        , MaxSO == data_test$MaxSO
+                        , SOS == data_test$SOS
+                        , OS != data_test$OS
+                        , MSC == data_test$MSC)
+  
+  
+  if (dim(compare_set)[1]>0) {
+    
+    Tot_comparisons <- Tot_comparisons +1
+          
+      changes <- tibble(pair = data_test$pair
+                        ,start_OS = data_test$OS
+                        ,compared_OS = compare_set$OS
+                        ,percent_change = (compare_set$profit_percent-data_test$profit_percent)/data_test$profit_percent
+                        ,tot_change = (compare_set$final_profit-data_test$final_profit)/data_test$final_profit
+                        ,daydeal_change = (compare_set$tot_days_deals-data_test$tot_days_deals)/data_test$tot_days_deals
+                        ,budget_change = (compare_set$required_investment-data_test$required_investment)/data_test$required_investment)
+      
+      Observations <- rbind(Observations, changes)
+    
+    if (data_test$profit_percent < compare_set$profit_percent) {
+      
+      OS_change_profit_percent <- OS_change_profit_percent+1
+      
+    }
+    
+    if (data_test$final_profit < compare_set$final_profit) {
+      OS_change_profit_tot <- OS_change_profit_tot+1
+
+    }
+    
+      if (data_test$tot_days_deals < compare_set$tot_days_deals) {
+      OS_change_day_deals <- OS_change_day_deals+1
+    }
+  }
+}
+
+all_coins <- pair_changes <- Observations %>% 
+            group_by(start_OS, compared_OS) %>% 
+            summarise(percent_change = mean(percent_change)
+                      ,tot_change = mean(tot_change)
+                      ,daydeal_change = mean(daydeal_change)
+                      ,budget_change = mean(budget_change)) %>% 
+            add_column(pair = 'All pairs', .before = 'start_OS')
+ 
+pair_changes <- Observations %>% 
+  group_by(pair, start_OS, compared_OS) %>% 
+  summarise(percent_change = mean(percent_change)
+            ,tot_change = mean(tot_change)
+            ,daydeal_change = mean(daydeal_change)
+            ,budget_change = mean(budget_change)) %>% 
+  rbind(all_coins)
+
+names(pair_changes)[4:7] <- c("Profit percent", "Total profit", "Days with deals", "Budget")
+
+#Present the table with results
+kable(pair_changes, caption = "Changes observed per pair") %>% kable_styling("striped", full_width = F) %>% row_spec(0)
+
+#Present some graphics with results
+Observations %>% 
+  ungroup() %>% 
+  ggplot(aes(tot_change, group = compared_OS, fill = compared_OS))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the total profit due increasing OS size")
+
+Observations %>% 
+  ungroup() %>% 
+  ggplot(aes(percent_change, group = compared_OS, fill = compared_OS))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the proportional profit due increasing OS size")
+
+Observations %>% 
+  ungroup() %>% 
+  ggplot(aes(daydeal_change, group = compared_OS, fill = compared_OS))+
+  geom_histogram()+
+  labs(title = "Rate of changes in the total of days with closed deals due increasing OS size")
 
 ```
 
 ```{r results='asis'}
+#Some essays for graphs on each coin
+
+p <- unique(table_results$pair)[1]
+
+coint_results <- table_results %>% 
+  filter(pair == p)
+
+basic_strategy <- coint_results %>% 
+  filter(bot_id == 2)
+basic_strategy$Strategy <- "Basic"
+
+top_aggro <- coint_results %>% 
+  filter(Strategy == "Aggro" ) %>% 
+  arrange(desc(profit_percent)) %>% 
+ filter(profit_percent >= profit_percent[3])
+
+top_moderate <- coint_results %>% 
+  filter(Strategy == "Moderate") %>% 
+  arrange(desc(profit_percent)) %>% 
+ filter(profit_percent >= profit_percent[3])
+
+
+top_conservative <- coint_results %>% 
+  filter(Strategy == "Conservative") %>% 
+  arrange(desc(profit_percent)) %>% 
+ filter(profit_percent >= profit_percent[3])
+
+top_results <- rbind(top_aggro, top_moderate) %>% 
+  rbind(top_conservative) %>% 
+  rbind(basic_strategy)
+  
+all_deals <- read_csv("simulations/2020-10-all_deals_ADA.csv")
+
+top_deals <- all_deals %>% 
+  filter(bot_id %in% top_results$bot_id)
+
+time_serie <- tibble(close_date = seq(min(all_deals$close_date, na.rm = T), max(all_deals$close_date, na.rm = T), by = 1))
+
+cash_per_day_table <- time_serie %>% 
+  left_join(top_deals) %>%
+  group_by(bot_id, bot, close_date) %>%
+  summarise(tot_profit = sum(final_profit, na.rm = T)) %>%
+  arrange(close_date) %>%
+  pivot_wider(names_from = close_date, values_from = tot_profit) %>%
+  left_join(coint_results[,c('bot_id', 'final_profit', 'profit_percent')]) %>%
+  write_csv("cash_per_day_table.csv")
+
+
+all_cash_per_day <- time_serie %>% 
+ left_join(top_deals) %>%
+  group_by(bot_id, bot, close_date) %>%
+  group_by(bot_id, bot, close_date) %>%
+  summarise(tot_profit = sum(final_profit, na.rm = T)) %>%
+  arrange(close_date) %>%
+  mutate(Month = month(close_date), Day = day(close_date))%>%
+  left_join(top_results[,c('bot_id', 'Strategy')]) %>% 
+  filter(!is.na(close_date))
+
+for (m in unique(all_cash_per_day$Month)) {
+  data <- all_cash_per_day %>% 
+    filter(Month == m)
+  
+  plot_top_bots <- data %>%
+  ggplot(aes(x=Day, y=tot_profit, col=bot, type = Strategy))+
+  geom_line(size = 2, position = position_dodge(width = 0.1))
+  
+  if (dim(filter(data, !is.na(bot_id)))[1] > 0) {
+print(plot_top_bots)
+    
+  }
+  
+}
+
+```
+
+```{r results='asis'}
+#Bitcoin giant
+
+all_deals <- read_csv("simulations/2017-10-all_deals_BTC.csv")
+all_totals <- read_csv("simulations/2017-10-all_totals_BTC.csv")
+
+kable(all_totals[,c(10,3:9,12:20)], caption = "Table 1: xxxxxxxxxx") %>% kable_styling("striped", full_width = F) %>% row_spec(0)
+
+difftime(min(all_totals$start_date), max(all_totals$end_date), units = "days")
+
+232.89/1095
+76.15/1095
+
+```
+```{r results='asis'}
+
 # 
-# top_10_setup <- all_totals %>%
-#   arrange(desc(final_profit)) %>% 
-#   select(bot_id,bot, final_profit) %>% 
-#   filter(final_profit >= final_profit[10])
+# plot_top_bots <- all_cash_per_day %>%
+#   ggplot(aes(x=Day, y=tot_profit, fill=as.character(bot_id), col = Strategy))+
+#   geom_col(size = 1, position = "dodge") + 
+#   theme(legend.position="bottom")+
+#   facet_wrap(~ Month)
+
+
+  # seq(min(all_cash_per_day$close_date, na.rm = T), max(all_cash_per_day$close_date, na.rm = T), by = 1)
+
+
+# library(dygraphs)
+# library(xts)          # To make the convertion data-frame / xts format
+# library(tidyverse)
+# library(lubridate)
 # 
-# all_cash_per_day <- all_deals %>% 
-#   group_by(bot, close_date) %>% 
-#   summarise(tot_profit = sum(final_profit, na.rm = T)) %>% 
-#   arrange(desc(close_date)) %>% 
-#   pivot_wider(names_from = close_date, values_from = tot_profit) %>% 
-#   left_join(all_totals[,c('bot', 'final_profit', 'profit_percent')]) %>% 
-#   arrange(desc(profit_percent))
+# don <- xts(x = all_cash_per_day$tot_profit, order.by = all_cash_per_day$close_date)
 # 
-# all_cash_per_month <- all_deals %>% 
-#   mutate(year = year(close_date), month = month(close_date)) %>% 
-#   arrange(close_date) %>% 
-#   group_by(bot, year, month) %>% 
-#   summarise(tot_profit = sum(final_profit, na.rm = T)) %>% 
-#   pivot_wider(names_from = month, values_from = tot_profit) %>% 
-#   left_join(all_totals[,c('bot', 'final_profit', 'profit_percent')]) %>% 
-#   arrange(desc(profit_percent))
+# # Finally the plot
+# p <- dygraph(don) %>%
+#   dyOptions(labelsUTC = TRUE, fillGraph=TRUE, fillAlpha=0.1, drawGrid = FALSE, colors="#D8AE5A") %>%
+#   dyRangeSelector() %>%
+#   dyCrosshair(direction = "vertical") %>%
+#   dyHighlight(highlightCircleSize = 5, highlightSeriesBackgroundAlpha = 0.2, hideOnMouseOut = FALSE)  %>%
+#   dyRoller(rollPeriod = 1)
+
+
+
 #   
 # test_correlation_pair <- all_deals[c(11,15,16,17)]
 # ggpairs(test_correlation_pair)
